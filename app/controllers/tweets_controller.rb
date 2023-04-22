@@ -8,12 +8,18 @@ class TweetsController < ApplicationController
   end
 
   def index_by_user
-    token = cookies.signed[:twitter_session_token]
-    session = Session.find_by(token: token)
-
-    if session
-      @tweets = session.user.tweets
-      render 'tweets/index' # can be omitted
+    user = User.find_by(username: params[:username])
+  
+    if user
+      @tweets = user.tweets.select(:id, :message).map do |tweet|
+        {
+          id: tweet.id,
+          username: user.username,
+          message: tweet.message
+        }
+      end
+  
+      render json: { tweets: @tweets }
     else
       render json: { tweets: [] }
     end
@@ -38,10 +44,16 @@ class TweetsController < ApplicationController
   end
 
   def destroy
-    @tweet = Tweet.find_by(id: params[:id])
-
-    if @tweet&.destroy
-      render json: { success: true }
+    token = cookies.signed[:twitter_session_token]
+    session = Session.find_by(token: token)
+  
+    if session
+      @tweet = Tweet.find(params[:id])
+      if @tweet.destroy
+        render json: { success: true }
+      else
+        render json: { success: false }
+      end
     else
       render json: { success: false }
     end
